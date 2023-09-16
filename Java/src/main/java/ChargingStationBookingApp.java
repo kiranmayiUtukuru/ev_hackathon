@@ -54,12 +54,11 @@ public class ChargingStationBookingApp extends Application {
         TableColumn<Booking, String> endTimeCol = new TableColumn<>("End Time");
         endTimeCol.setCellValueFactory(new PropertyValueFactory<>("endTime"));
         tableView.getColumns().addAll(startTimeCol, endTimeCol);
-
         bookings = FXCollections.observableArrayList();
         tableView.setItems(bookings);
 
         // Event handlers
-        bookButton.setOnAction(e -> bookSlot(startTimeField.getText(), endTimeField.getText()));
+        bookButton.setOnAction(e -> bookSlot(startTimeField.getText(), endTimeField.getText(), locationComboBox.getValue()));
         viewButton.setOnAction(e -> viewBookings());
         cancelButton.setOnAction(e -> cancelBooking());
 
@@ -72,6 +71,8 @@ public class ChargingStationBookingApp extends Application {
                 startTimeField,
                 endTimeLabel,
                 endTimeField,
+                new Label("Charging Location:"), // Label for the ComboBox
+                locationComboBox, // Add the ComboBox for charging location
                 bookButton,
                 viewButton,
                 tableView,
@@ -96,22 +97,35 @@ public class ChargingStationBookingApp extends Application {
         }
     }
 
-    private void bookSlot(String startTime, String endTime) {
-        // Check for overlapping bookings
+    private void bookSlot(String startTime, String endTime, String location) {
         if (!isOverlapping(startTime, endTime)) {
             try {
                 PreparedStatement preparedStatement = connection.prepareStatement(INSERT_BOOKING_SQL);
                 preparedStatement.setString(1, startTime);
                 preparedStatement.setString(2, endTime);
+                preparedStatement.setString(3, location); // Add location to the statement
                 preparedStatement.executeUpdate();
                 preparedStatement.close();
                 viewBookings(); // Refresh the booking list after a successful booking
             } catch (SQLException e) {
                 e.printStackTrace();
             }
-        } else {
-            // Handle overlapping booking error
-            System.out.println("Error: Overlapping booking detected.");
+        } else {// Check for overlapping bookings
+            if (!isOverlapping(startTime, endTime)) {
+                try {
+                    PreparedStatement preparedStatement = connection.prepareStatement(INSERT_BOOKING_SQL);
+                    preparedStatement.setString(1, startTime);
+                    preparedStatement.setString(2, endTime);
+                    preparedStatement.executeUpdate();
+                    preparedStatement.close();
+                    viewBookings(); // Refresh the booking list after a successful booking
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            } else {
+                // Handle overlapping booking error
+                System.out.println("Error: Overlapping booking detected.");
+            }
         }
     }
 
