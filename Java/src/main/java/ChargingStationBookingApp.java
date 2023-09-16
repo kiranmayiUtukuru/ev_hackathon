@@ -13,8 +13,8 @@ public class ChargingStationBookingApp extends Application {
 
     // Database connection parameters
     private static final String DATABASE_URL = "jdbc:sqlite:charging_station.db";
-    private static final String CREATE_TABLE_SQL = "CREATE TABLE IF NOT EXISTS bookings (id INTEGER PRIMARY KEY AUTOINCREMENT, start_time TEXT, end_time TEXT)";
-    private static final String INSERT_BOOKING_SQL = "INSERT INTO bookings (start_time, end_time) VALUES (?, ?)";
+    private static final String CREATE_TABLE_SQL = "CREATE TABLE IF NOT EXISTS bookings (id INTEGER PRIMARY KEY AUTOINCREMENT, start_time TEXT, end_time TEXT, location TEXT)";
+    private static final String INSERT_BOOKING_SQL = "INSERT INTO bookings (start_time, end_time, location) VALUES (?, ?)";
     private static final String SELECT_BOOKINGS_SQL = "SELECT * FROM bookings";
     private static final String DELETE_BOOKING_SQL = "DELETE FROM bookings WHERE id = ?";
 
@@ -36,7 +36,13 @@ public class ChargingStationBookingApp extends Application {
         TextField startTimeField = new TextField();
         Label endTimeLabel = new Label("End Time:");
         TextField endTimeField = new TextField();
+        // Create a ComboBox for charging location selection
+        ComboBox<String> locationComboBox = new ComboBox<>();
+        locationComboBox.setPromptText("Select Charging Location");
+        locationComboBox.getItems().addAll("Location A", "Location B", "Location C"); // Add available locations
         Button bookButton = new Button("Book Slot");
+
+
         Button viewButton = new Button("View Bookings");
         Button cancelButton = new Button("Cancel Booking");
 
@@ -48,12 +54,11 @@ public class ChargingStationBookingApp extends Application {
         TableColumn<Booking, String> endTimeCol = new TableColumn<>("End Time");
         endTimeCol.setCellValueFactory(new PropertyValueFactory<>("endTime"));
         tableView.getColumns().addAll(startTimeCol, endTimeCol);
-
         bookings = FXCollections.observableArrayList();
         tableView.setItems(bookings);
 
         // Event handlers
-        bookButton.setOnAction(e -> bookSlot(startTimeField.getText(), endTimeField.getText()));
+        bookButton.setOnAction(e -> bookSlot(startTimeField.getText(), endTimeField.getText(), locationComboBox.getValue()));
         viewButton.setOnAction(e -> viewBookings());
         cancelButton.setOnAction(e -> cancelBooking());
 
@@ -66,6 +71,8 @@ public class ChargingStationBookingApp extends Application {
                 startTimeField,
                 endTimeLabel,
                 endTimeField,
+                new Label("Charging Location:"), // Label for the ComboBox
+                locationComboBox, // Add the ComboBox for charging location
                 bookButton,
                 viewButton,
                 tableView,
@@ -90,17 +97,60 @@ public class ChargingStationBookingApp extends Application {
         }
     }
 
-    private void bookSlot(String startTime, String endTime) {
-        try {
-            PreparedStatement preparedStatement = connection.prepareStatement(INSERT_BOOKING_SQL);
-            preparedStatement.setString(1, startTime);
-            preparedStatement.setString(2, endTime);
-            preparedStatement.executeUpdate();
-            preparedStatement.close();
-        } catch (SQLException e) {
-            e.printStackTrace();
+    private void bookSlot(String startTime, String endTime, String location) {
+        if (!isOverlapping(startTime, endTime)) {
+            try {
+                PreparedStatement preparedStatement = connection.prepareStatement(INSERT_BOOKING_SQL);
+                preparedStatement.setString(1, startTime);
+                preparedStatement.setString(2, endTime);
+                preparedStatement.setString(3, location); // Add location to the statement
+                preparedStatement.executeUpdate();
+                preparedStatement.close();
+                viewBookings(); // Refresh the booking list after a successful booking
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        } else {// Check for overlapping bookings
+            if (!isOverlapping(startTime, endTime)) {
+                try {
+                    PreparedStatement preparedStatement = connection.prepareStatement(INSERT_BOOKING_SQL);
+                    preparedStatement.setString(1, startTime);
+                    preparedStatement.setString(2, endTime);
+                    preparedStatement.executeUpdate();
+                    preparedStatement.close();
+                    viewBookings(); // Refresh the booking list after a successful booking
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            } else {
+                // Handle overlapping booking error
+                System.out.println("Error: Overlapping booking detected.");
+            }
         }
     }
+
+    private boolean isOverlapping(String newStartTime, String newEndTime) {
+        // Check if the new booking overlaps with any existing bookings
+        for (Booking existingBooking : bookings) {
+            String existingStartTime = existingBooking.getStartTime();
+            String existingEndTime = existingBooking.getEndTime();
+
+            // Parse time strings into integers for comparison
+            int newStart = Integer.parseInt(newStartTime.replace(":", ""));
+            int newEnd = Integer.parseInt(newEndTime.replace(":", ""));
+            int existingStart = Integer.parseInt(existingStartTime.replace(":", ""));
+            int existingEnd = Integer.parseInt(existingEndTime.replace(":", ""));
+
+            // Check for overlap
+            if ((newStart >= existingStart && newStart < existingEnd) ||
+                    (newEnd > existingStart && newEnd <= existingEnd) ||
+                    (newStart <= existingStart && newEnd >= existingEnd)) {
+                return true; // Overlapping booking detected
+            }
+        }
+        return false; // No overlapping booking detected
+    }
+
 
     private void viewBookings() {
         bookings.clear();
@@ -128,12 +178,16 @@ public class ChargingStationBookingApp extends Application {
                 preparedStatement.setInt(1, bookingId);
                 preparedStatement.executeUpdate();
                 preparedStatement.close();
-                viewBookings(); // Refresh the booking list after cancellation
+
+                // Remove the canceled booking from the observable list
+                bookings.remove(selectedBooking);
             } catch (SQLException e) {
                 e.printStackTrace();
             }
         }
     }
+
+
 
     @Override
     public void stop() {
@@ -151,11 +205,21 @@ public class ChargingStationBookingApp extends Application {
         private String startTime;
         private String endTime;
 
+        private String location;
+
         public Booking(String startTime, String endTime) {
             this.startTime = startTime;
             this.endTime = endTime;
+            this.location = location;
+        }
+        // Getters and setters for the location field
+        public String getLocation() {
+            return location;
         }
 
+        public void setLocation(String location) {
+            this.location = location;
+        }
         public int getId() {
             return id;
         }
