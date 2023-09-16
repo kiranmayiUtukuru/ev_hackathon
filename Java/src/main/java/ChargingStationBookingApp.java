@@ -13,8 +13,8 @@ public class ChargingStationBookingApp extends Application {
 
     // Database connection parameters
     private static final String DATABASE_URL = "jdbc:sqlite:charging_station.db";
-    private static final String CREATE_TABLE_SQL = "CREATE TABLE IF NOT EXISTS bookings (id INTEGER PRIMARY KEY AUTOINCREMENT, start_time TEXT, end_time TEXT)";
-    private static final String INSERT_BOOKING_SQL = "INSERT INTO bookings (start_time, end_time) VALUES (?, ?)";
+    private static final String CREATE_TABLE_SQL = "CREATE TABLE IF NOT EXISTS bookings (id INTEGER PRIMARY KEY AUTOINCREMENT, start_time TEXT, end_time TEXT, location TEXT)";
+    private static final String INSERT_BOOKING_SQL = "INSERT INTO bookings (start_time, end_time, location) VALUES (?, ?)";
     private static final String SELECT_BOOKINGS_SQL = "SELECT * FROM bookings";
     private static final String DELETE_BOOKING_SQL = "DELETE FROM bookings WHERE id = ?";
 
@@ -210,8 +210,16 @@ public class ChargingStationBookingApp extends Application {
         public Booking(String startTime, String endTime) {
             this.startTime = startTime;
             this.endTime = endTime;
+            this.location = location;
+        }
+        // Getters and setters for the location field
+        public String getLocation() {
+            return location;
         }
 
+        public void setLocation(String location) {
+            this.location = location;
+        }
         public int getId() {
             return id;
         }
