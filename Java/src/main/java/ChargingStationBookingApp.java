@@ -36,7 +36,13 @@ public class ChargingStationBookingApp extends Application {
         TextField startTimeField = new TextField();
         Label endTimeLabel = new Label("End Time:");
         TextField endTimeField = new TextField();
+        // Create a ComboBox for charging location selection
+        ComboBox<String> locationComboBox = new ComboBox<>();
+        locationComboBox.setPromptText("Select Charging Location");
+        locationComboBox.getItems().addAll("Location A", "Location B", "Location C"); // Add available locations
         Button bookButton = new Button("Book Slot");
+
+
         Button viewButton = new Button("View Bookings");
         Button cancelButton = new Button("Cancel Booking");
 
@@ -168,6 +174,7 @@ public class ChargingStationBookingApp extends Application {
     }
 
 
+
     @Override
     public void stop() {
         try {
@@ -183,6 +190,8 @@ public class ChargingStationBookingApp extends Application {
         private int id;
         private String startTime;
         private String endTime;
+
+        private String location;
 
         public Booking(String startTime, String endTime) {
             this.startTime = startTime;
