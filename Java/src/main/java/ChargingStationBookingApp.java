@@ -1,3 +1,4 @@
+import com.esri.arcgisruntime.ArcGISRuntimeEnvironment;
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -8,6 +9,33 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.control.cell.PropertyValueFactory;
 import java.sql.*;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.paint.Color;
+import javafx.scene.control.Alert;
+import javafx.scene.control.TextField;
+
+import com.esri.arcgisruntime.concurrent.ListenableFuture;
+import com.esri.arcgisruntime.mapping.view.Graphic;
+import com.esri.arcgisruntime.mapping.view.GraphicsOverlay;
+import com.esri.arcgisruntime.symbology.SimpleMarkerSymbol;
+import com.esri.arcgisruntime.symbology.TextSymbol;
+import com.esri.arcgisruntime.tasks.geocode.GeocodeParameters;
+import com.esri.arcgisruntime.tasks.geocode.GeocodeResult;
+import com.esri.arcgisruntime.tasks.geocode.LocatorTask;
+import com.esri.arcgisruntime.ArcGISRuntimeEnvironment;
+import com.esri.arcgisruntime.mapping.ArcGISMap;
+import com.esri.arcgisruntime.mapping.BasemapStyle;
+import com.esri.arcgisruntime.mapping.Viewpoint;
+import com.esri.arcgisruntime.mapping.view.MapView;
+
+import javafx.application.Application;
+import javafx.scene.Scene;
+import javafx.scene.layout.StackPane;
+import javafx.stage.Stage;
 
 public class ChargingStationBookingApp extends Application {
 
@@ -21,6 +49,13 @@ public class ChargingStationBookingApp extends Application {
     private Connection connection;
     private TableView<Booking> tableView;
     private ObservableList<Booking> bookings;
+    private MapView mapView;
+
+    private GeocodeParameters geocodeParameters;
+    private GraphicsOverlay graphicsOverlay;
+    private LocatorTask locatorTask;
+
+    private TextField searchBox;
 
     public static void main(String[] args) {
         launch(args);
@@ -28,18 +63,37 @@ public class ChargingStationBookingApp extends Application {
 
     @Override
     public void start(Stage primaryStage) {
+//        ArcGISRuntimeEnvironment.setInstallDirectory("/Users/ambin04245/Downloads/arcgis-runtime-sdk-java-200.2.0");
         initializeDatabase();
+        String yourApiKey = "AAPK9b1070d636d94f7886a6474a2751a9ca_MBQoO3pxkeibq99KBzD247WpsDsvjsHJn8nqhpsU1eerd_WQDGkBp_CtBhEJV0Q";
+        ArcGISRuntimeEnvironment.setApiKey(yourApiKey);
+        StackPane stackPane = new StackPane();
 
         // Create UI components
         Label titleLabel = new Label("EV Charging Station Booking System");
-        Label startTimeLabel = new Label("Start Time:");
+        Label startTimeLabel = new Label("Start Time*:");
         TextField startTimeField = new TextField();
-        Label endTimeLabel = new Label("End Time:");
+        Label endTimeLabel = new Label("End Time*:");
         TextField endTimeField = new TextField();
+//        Label locationLabel = new Label("Location*:");
         // Create a ComboBox for charging location selection
         ComboBox<String> locationComboBox = new ComboBox<>();
-        locationComboBox.setPromptText("Select Charging Location");
+        locationComboBox.setPromptText("Select Charging Location*");
         locationComboBox.getItems().addAll("Location A", "Location B", "Location C"); // Add available locations
+        ArcGISMap map = new ArcGISMap(BasemapStyle.ARCGIS_TOPOGRAPHIC);
+        // set the map on the map view
+        mapView.setMap(map);
+        mapView.setViewpoint(new Viewpoint(34.02700, -118.80543, 144447.638572));
+
+        // create a graphics overlay and add it to the map view
+        graphicsOverlay = new GraphicsOverlay();
+
+        mapView.getGraphicsOverlays().add(graphicsOverlay);
+        setupTextField();
+        createLocatorTaskAndDefaultParameters();
+        stackPane.getChildren().add(searchBox);
+        StackPane.setAlignment(searchBox, Pos.TOP_LEFT);
+        StackPane.setMargin(searchBox, new Insets(10, 0, 0, 10));
         Button bookButton = new Button("Book Slot");
 
 
@@ -98,6 +152,11 @@ public class ChargingStationBookingApp extends Application {
     }
 
     private void bookSlot(String startTime, String endTime, String location) {
+        // Check if any of the mandatory fields are empty
+        if (startTime.isEmpty() || endTime.isEmpty() || location == null) {
+            System.out.println("Error: Please fill in all mandatory fields.");
+            return; // Prevent booking if any field is empty
+        }
         if (!isOverlapping(startTime, endTime)) {
             try {
                 PreparedStatement preparedStatement = connection.prepareStatement(INSERT_BOOKING_SQL);
@@ -187,7 +246,37 @@ public class ChargingStationBookingApp extends Application {
         }
     }
 
+    private void setupTextField() {
+        searchBox = new TextField();
+        searchBox.setMaxWidth(400);
+        searchBox.setPromptText("Search for an address");
+    }
+    private void createLocatorTaskAndDefaultParameters() {
+        locatorTask = new LocatorTask("https://geocode-api.arcgis.com/arcgis/rest/services/World/GeocodeServer");
 
+        geocodeParameters = new GeocodeParameters();
+        geocodeParameters.getResultAttributeNames().add("*");
+        geocodeParameters.setMaxResults(1);
+        geocodeParameters.setOutputSpatialReference(mapView.getSpatialReference());
+    }
+    private void performGeocode(String address) {
+        ListenableFuture<List<GeocodeResult>> geocodeResults = locatorTask.geocodeAsync(address, geocodeParameters);
+
+        geocodeResults.addDoneListener(() -> {
+            try {
+                List<GeocodeResult> geocodes = geocodeResults.get();
+                if (geocodes.size() > 0) {
+                    GeocodeResult result = geocodes.get(0);
+
+                } else {
+                    new Alert(Alert.AlertType.INFORMATION, "No results found.").show();
+                }
+            } catch (InterruptedException | ExecutionException e) {
+                new Alert(Alert.AlertType.ERROR, "Error getting result.").show();
+                e.printStackTrace();
+            }
+        });
+    }
 
     @Override
     public void stop() {
