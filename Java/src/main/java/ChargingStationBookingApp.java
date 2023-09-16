@@ -91,46 +91,16 @@ public class ChargingStationBookingApp extends Application {
     }
 
     private void bookSlot(String startTime, String endTime) {
-        // Check for overlapping bookings
-        if (!isOverlapping(startTime, endTime)) {
-            try {
-                PreparedStatement preparedStatement = connection.prepareStatement(INSERT_BOOKING_SQL);
-                preparedStatement.setString(1, startTime);
-                preparedStatement.setString(2, endTime);
-                preparedStatement.executeUpdate();
-                preparedStatement.close();
-                viewBookings(); // Refresh the booking list after a successful booking
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        } else {
-            // Handle overlapping booking error
-            System.out.println("Error: Overlapping booking detected.");
+        try {
+            PreparedStatement preparedStatement = connection.prepareStatement(INSERT_BOOKING_SQL);
+            preparedStatement.setString(1, startTime);
+            preparedStatement.setString(2, endTime);
+            preparedStatement.executeUpdate();
+            preparedStatement.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
     }
-
-    private boolean isOverlapping(String newStartTime, String newEndTime) {
-        // Check if the new booking overlaps with any existing bookings
-        for (Booking existingBooking : bookings) {
-            String existingStartTime = existingBooking.getStartTime();
-            String existingEndTime = existingBooking.getEndTime();
-
-            // Parse time strings into integers for comparison
-            int newStart = Integer.parseInt(newStartTime.replace(":", ""));
-            int newEnd = Integer.parseInt(newEndTime.replace(":", ""));
-            int existingStart = Integer.parseInt(existingStartTime.replace(":", ""));
-            int existingEnd = Integer.parseInt(existingEndTime.replace(":", ""));
-
-            // Check for overlap
-            if ((newStart >= existingStart && newStart < existingEnd) ||
-                    (newEnd > existingStart && newEnd <= existingEnd) ||
-                    (newStart <= existingStart && newEnd >= existingEnd)) {
-                return true; // Overlapping booking detected
-            }
-        }
-        return false; // No overlapping booking detected
-    }
-
 
     private void viewBookings() {
         bookings.clear();
@@ -158,15 +128,12 @@ public class ChargingStationBookingApp extends Application {
                 preparedStatement.setInt(1, bookingId);
                 preparedStatement.executeUpdate();
                 preparedStatement.close();
-
-                // Remove the canceled booking from the observable list
-                bookings.remove(selectedBooking);
+                viewBookings(); // Refresh the booking list after cancellation
             } catch (SQLException e) {
                 e.printStackTrace();
             }
         }
     }
-
 
     @Override
     public void stop() {
