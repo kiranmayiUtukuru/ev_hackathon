@@ -41,8 +41,8 @@ public class ChargingStationBookingApp extends Application {
 
     // Database connection parameters
     private static final String DATABASE_URL = "jdbc:sqlite:charging_station.db";
-    private static final String CREATE_TABLE_SQL = "CREATE TABLE IF NOT EXISTS bookings (id INTEGER PRIMARY KEY AUTOINCREMENT, start_time TEXT, end_time TEXT, location TEXT)";
-    private static final String INSERT_BOOKING_SQL = "INSERT INTO bookings (start_time, end_time, location) VALUES (?, ?)";
+    private static final String CREATE_TABLE_SQL = "CREATE TABLE IF NOT EXISTS bookings (id INTEGER PRIMARY KEY AUTOINCREMENT, start_time TEXT, end_time TEXT)";
+    private static final String INSERT_BOOKING_SQL = "INSERT INTO bookings (start_time, end_time) VALUES (?, ?)";
     private static final String SELECT_BOOKINGS_SQL = "SELECT * FROM bookings";
     private static final String DELETE_BOOKING_SQL = "DELETE FROM bookings WHERE id = ?";
 
@@ -54,11 +54,10 @@ public class ChargingStationBookingApp extends Application {
     private GeocodeParameters geocodeParameters;
     private GraphicsOverlay graphicsOverlay;
     private LocatorTask locatorTask;
-
+//    private ComboBox<String> locationComboBox;
     private TextField searchBox;
 
     public static void main(String[] args) {
-//        ArcGISRuntimeEnvironment.setInstallDirectory("\\Users\\ambin04245\\Downloads\\arcgis-runtime-sdk-java-200.2.0");
         launch(args);
         String yourApiKey = "AAPK9b1070d636d94f7886a6474a2751a9ca_MBQoO3pxkeibq99KBzD247WpsDsvjsHJn8nqhpsU1eerd_WQDGkBp_CtBhEJV0Q";
         ArcGISRuntimeEnvironment.setApiKey(yourApiKey);
@@ -68,8 +67,8 @@ public class ChargingStationBookingApp extends Application {
     public void start(Stage primaryStage) {
 //
         initializeDatabase();
-//        String yourApiKey = "AAPK9b1070d636d94f7886a6474a2751a9ca_MBQoO3pxkeibq99KBzD247WpsDsvjsHJn8nqhpsU1eerd_WQDGkBp_CtBhEJV0Q";
-//        ArcGISRuntimeEnvironment.setApiKey(yourApiKey);
+        String yourApiKey = "AAPK9b1070d636d94f7886a6474a2751a9ca_MBQoO3pxkeibq99KBzD247WpsDsvjsHJn8nqhpsU1eerd_WQDGkBp_CtBhEJV0Q";
+        ArcGISRuntimeEnvironment.setApiKey(yourApiKey);
 //        ArcGISRuntimeEnvironment.installDirectory();
 //        ArcGISRuntimeEnvironment.setInstallDirectory("/Users/ambin04245/Downloads/arcgis-runtime-sdk-java-200.2.0");
         mapView = new MapView();
@@ -83,9 +82,9 @@ public class ChargingStationBookingApp extends Application {
         TextField endTimeField = new TextField();
 //        Label locationLabel = new Label("Location*:");
         // Create a ComboBox for charging location selection
-        ComboBox<String> locationComboBox = new ComboBox<>();
-        locationComboBox.setPromptText("Select Charging Location*");
-        locationComboBox.getItems().addAll("Location A", "Location B", "Location C"); // Add available locations
+//       locationComboBox = new ComboBox<>();
+//        locationComboBox.setPromptText("Select Charging Location*");
+//        locationComboBox.getItems().addAll("Location A", "Location B", "Location C"); // Add available locations
         ArcGISMap map = new ArcGISMap(BasemapStyle.ARCGIS_TOPOGRAPHIC);
         // set the map on the map view
         mapView.setMap(map);
@@ -97,6 +96,13 @@ public class ChargingStationBookingApp extends Application {
         mapView.getGraphicsOverlays().add(graphicsOverlay);
         setupTextField();
         createLocatorTaskAndDefaultParameters();
+        searchBox.setOnAction(event -> {
+            String address = searchBox.getText();
+            if (!address.isBlank()) {
+                performGeocode(address);
+            }
+        });
+
         stackPane.getChildren().add(searchBox);
         StackPane.setAlignment(searchBox, Pos.TOP_LEFT);
         StackPane.setMargin(searchBox, new Insets(10, 0, 0, 10));
@@ -118,7 +124,7 @@ public class ChargingStationBookingApp extends Application {
         tableView.setItems(bookings);
 
         // Event handlers
-        bookButton.setOnAction(e -> bookSlot(startTimeField.getText(), endTimeField.getText(), locationComboBox.getValue()));
+        bookButton.setOnAction(e -> bookSlot(startTimeField.getText(), endTimeField.getText()));
         viewButton.setOnAction(e -> viewBookings());
         cancelButton.setOnAction(e -> cancelBooking());
 
@@ -132,7 +138,7 @@ public class ChargingStationBookingApp extends Application {
                 endTimeLabel,
                 endTimeField,
                 new Label("Charging Location:"), // Label for the ComboBox
-                locationComboBox, // Add the ComboBox for charging location
+//                locationComboBox, // Add the ComboBox for charging location
                 bookButton,
                 viewButton,
                 tableView,
@@ -155,20 +161,33 @@ public class ChargingStationBookingApp extends Application {
         } catch (SQLException e) {
             e.printStackTrace();
         }
+//        try {
+//            connection = DriverManager.getConnection(DATABASE_URL);
+//            Statement statement = connection.createStatement();
+//            statement.execute(CREATE_TABLE_SQL);
+//
+//            // Use ALTER TABLE to add the "location" column
+//            statement.execute("ALTER TABLE bookings ADD COLUMN location TEXT");
+//
+//            statement.close();
+//        } catch (SQLException e) {
+//            e.printStackTrace();
+//        }
     }
 
-    private void bookSlot(String startTime, String endTime, String location) {
+    private void bookSlot(String startTime, String endTime) {
         // Check if any of the mandatory fields are empty
-        if (startTime.isEmpty() || endTime.isEmpty() || location == null) {
+        if (startTime.isEmpty() || endTime.isEmpty() ) {
             System.out.println("Error: Please fill in all mandatory fields.");
             return; // Prevent booking if any field is empty
         }
+//        location = locationComboBox.getValue(); // Get the selected location
         if (!isOverlapping(startTime, endTime)) {
             try {
                 PreparedStatement preparedStatement = connection.prepareStatement(INSERT_BOOKING_SQL);
                 preparedStatement.setString(1, startTime);
                 preparedStatement.setString(2, endTime);
-                preparedStatement.setString(3, location); // Add location to the statement
+//                preparedStatement.setString(3, location); // Add location to the statement
                 preparedStatement.executeUpdate();
                 preparedStatement.close();
                 viewBookings(); // Refresh the booking list after a successful booking
@@ -225,6 +244,7 @@ public class ChargingStationBookingApp extends Application {
             while (resultSet.next()) {
                 String startTime = resultSet.getString("start_time");
                 String endTime = resultSet.getString("end_time");
+//                String location = resultSet.getString("location");
                 bookings.add(new Booking(startTime, endTime));
             }
             resultSet.close();
@@ -257,6 +277,7 @@ public class ChargingStationBookingApp extends Application {
         searchBox.setMaxWidth(400);
         searchBox.setPromptText("Search for an address");
     }
+
     private void createLocatorTaskAndDefaultParameters() {
         locatorTask = new LocatorTask("https://geocode-api.arcgis.com/arcgis/rest/services/World/GeocodeServer");
 
@@ -273,6 +294,7 @@ public class ChargingStationBookingApp extends Application {
                 List<GeocodeResult> geocodes = geocodeResults.get();
                 if (geocodes.size() > 0) {
                     GeocodeResult result = geocodes.get(0);
+                    displayResult(result);
 
                 } else {
                     new Alert(Alert.AlertType.INFORMATION, "No results found.").show();
@@ -283,6 +305,24 @@ public class ChargingStationBookingApp extends Application {
             }
         });
     }
+    private void displayResult(GeocodeResult geocodeResult) {
+        graphicsOverlay.getGraphics().clear(); // clears the overlay of any previous result
+
+        // create a graphic to display the address text
+        String label = geocodeResult.getLabel();
+        TextSymbol textSymbol = new TextSymbol(18, label, Color.BLACK, TextSymbol.HorizontalAlignment.CENTER, TextSymbol.VerticalAlignment.BOTTOM);
+        Graphic textGraphic = new Graphic(geocodeResult.getDisplayLocation(), textSymbol);
+        graphicsOverlay.getGraphics().add(textGraphic);
+
+        // create a graphic to display the location as a red square
+        SimpleMarkerSymbol markerSymbol = new SimpleMarkerSymbol(SimpleMarkerSymbol.Style.SQUARE, Color.RED, 12.0f);
+        Graphic markerGraphic = new Graphic(geocodeResult.getDisplayLocation(), geocodeResult.getAttributes(), markerSymbol);
+        graphicsOverlay.getGraphics().add(markerGraphic);
+
+        mapView.setViewpointCenterAsync(geocodeResult.getDisplayLocation());
+    }
+
+
 
     @Override
     public void stop() {
@@ -305,16 +345,16 @@ public class ChargingStationBookingApp extends Application {
         public Booking(String startTime, String endTime) {
             this.startTime = startTime;
             this.endTime = endTime;
-            this.location = location;
+//            this.location = location;
         }
         // Getters and setters for the location field
-        public String getLocation() {
-            return location;
-        }
-
-        public void setLocation(String location) {
-            this.location = location;
-        }
+//        public String getLocation() {
+//            return location;
+//        }
+//
+//        public void setLocation(String location) {
+//            this.location = location;
+//        }
         public int getId() {
             return id;
         }
@@ -339,4 +379,5 @@ public class ChargingStationBookingApp extends Application {
             this.endTime = endTime;
         }
     }
+
 }
