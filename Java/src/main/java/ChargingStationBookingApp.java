@@ -58,15 +58,21 @@ public class ChargingStationBookingApp extends Application {
     private TextField searchBox;
 
     public static void main(String[] args) {
+//        ArcGISRuntimeEnvironment.setInstallDirectory("\\Users\\ambin04245\\Downloads\\arcgis-runtime-sdk-java-200.2.0");
         launch(args);
+        String yourApiKey = "AAPK9b1070d636d94f7886a6474a2751a9ca_MBQoO3pxkeibq99KBzD247WpsDsvjsHJn8nqhpsU1eerd_WQDGkBp_CtBhEJV0Q";
+        ArcGISRuntimeEnvironment.setApiKey(yourApiKey);
     }
 
     @Override
     public void start(Stage primaryStage) {
-//        ArcGISRuntimeEnvironment.setInstallDirectory("/Users/ambin04245/Downloads/arcgis-runtime-sdk-java-200.2.0");
+//
         initializeDatabase();
-        String yourApiKey = "AAPK9b1070d636d94f7886a6474a2751a9ca_MBQoO3pxkeibq99KBzD247WpsDsvjsHJn8nqhpsU1eerd_WQDGkBp_CtBhEJV0Q";
-        ArcGISRuntimeEnvironment.setApiKey(yourApiKey);
+//        String yourApiKey = "AAPK9b1070d636d94f7886a6474a2751a9ca_MBQoO3pxkeibq99KBzD247WpsDsvjsHJn8nqhpsU1eerd_WQDGkBp_CtBhEJV0Q";
+//        ArcGISRuntimeEnvironment.setApiKey(yourApiKey);
+//        ArcGISRuntimeEnvironment.installDirectory();
+//        ArcGISRuntimeEnvironment.setInstallDirectory("/Users/ambin04245/Downloads/arcgis-runtime-sdk-java-200.2.0");
+        mapView = new MapView();
         StackPane stackPane = new StackPane();
 
         // Create UI components
